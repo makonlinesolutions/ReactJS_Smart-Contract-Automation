@@ -1,150 +1,172 @@
 import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { ToastContainer } from 'react-toastify';
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export default function WalletAutomationDashboard() {
-  const [tradeAmount, setTradeAmount] = useState('');
+const WalletAutomationDashboard = () => {
+  const [amount, setAmount] = useState('');
   const [walletCount, setWalletCount] = useState('');
-  const [wallets, setWallets] = useState<any[]>([]);
   const [telegram, setTelegram] = useState('');
   const [twitter, setTwitter] = useState('');
   const [discord, setDiscord] = useState('');
   const [proxy, setProxy] = useState('');
-  const [logDir, setLogDir] = useState('');
+  const [logPath, setLogPath] = useState('');
+  const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ tradeAmount?: string; walletCount?: string }>({});
 
-  const handleWalletUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
       try {
-        const parsed = JSON.parse(event.target?.result as string);
-        setWallets(parsed);
-        setWalletCount(parsed.length.toString());
-        toast.success(`✅ Imported ${parsed.length} wallets`);
-      } catch {
-        toast.error('❌ Invalid wallet file');
+        const fileText = await e.target.files[0].text();
+        const parsed = JSON.parse(fileText);
+        if (Array.isArray(parsed)) {
+          setWallets(parsed);
+          setWalletCount(parsed.length.toString());
+        } else {
+          alert("Invalid JSON format. Expected an array of wallets.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to read or parse the wallets.json file.");
       }
-    };
-    reader.readAsText(file);
+    }
   };
 
-  const handleStartAutomation = async () => {
-    const validationErrors: { tradeAmount?: string; walletCount?: string } = {};
-
-    if (!wallets || wallets.length === 0) {
-      toast.error('❌ Please import at least one wallet before starting automation.');
+  const handleStart = async () => {
+    if (!wallets.length) {
+      alert("📂 Please upload a valid wallets.json file.");
       return;
     }
 
-    if (!tradeAmount || parseFloat(tradeAmount) <= 0) {
-      validationErrors.tradeAmount = 'Trade amount is required and must be a number';
-    }
-
-    if (!walletCount || parseInt(walletCount) <= 0) {
-      validationErrors.walletCount = 'Wallet count is required and must be a number';
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    if (!amount) {
+      alert("❗ Please enter trade amount");
       return;
-    } else {
-      setErrors({});
     }
+
+    setLoading(true);
+
+    const payload = {
+      amount,
+      walletCount,
+      telegram,
+      twitter,
+      discord,
+      proxy,
+      logPath,
+      wallets,
+    };
 
     try {
-      setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/start`, {
+      const response = await fetch(`${baseUrl}/api/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: tradeAmount,
-          walletCount,
-          wallets,
-          telegram,
-          twitter,
-          discord,
-          faucetProxy: proxy.split('\n'),
-          logDir,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(`✅ ${data.message}`);
+      if (!response.ok) throw new Error("Backend error");
+
+      const result = await response.json();
+      if (result && result.message) {
+        alert(`🚀 ${result.message}`);
       } else {
-        toast.error(`❌ ${data.error}`);
+        alert("⚠️ Backend did not return a success message.");
       }
-    } catch (error) {
-      console.error('❌ API call failed:', error);
-      toast.error('❌ Something went wrong. Please check the console for more info.');
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error triggering backend automation.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white p-6 rounded-xl shadow space-y-6">
-        <h1 className="text-2xl font-bold text-center">AUTOMATION</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <span role="img" aria-label="brain">🧠</span> Wallet Automation Dashboard
+        </h2>
 
-        <div>
-          <Input
-            type="number"
-            placeholder="Amount"
-            value={tradeAmount}
-            onChange={(e) => setTradeAmount(e.target.value)}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-sm font-semibold">Amount to Trade</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full p-2 border rounded mt-1"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-sm font-semibold">Number of Wallets</label>
+            <input
+              type="number"
+              value={walletCount}
+              disabled
+              className="w-full p-2 border rounded mt-1 bg-gray-100 text-gray-600"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-sm font-semibold">Upload wallets.json</label>
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileUpload}
+            className="w-full p-2 border rounded mt-1"
           />
-          {errors.tradeAmount && <p className="text-red-600 text-sm mt-1">{errors.tradeAmount}</p>}
         </div>
 
-        <div>
-          <Input
-            type="number"
-            placeholder="Number of wallets to be used"
-            value={walletCount}
-            onChange={(e) => setWalletCount(e.target.value)}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <input
+            type="text"
+            value={telegram}
+            onChange={(e) => setTelegram(e.target.value)}
+            placeholder="Telegram"
+            className="w-full p-2 border rounded"
           />
-          {errors.walletCount && <p className="text-red-600 text-sm mt-1">{errors.walletCount}</p>}
+          <input
+            type="text"
+            value={twitter}
+            onChange={(e) => setTwitter(e.target.value)}
+            placeholder="Twitter"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="text"
+            value={discord}
+            onChange={(e) => setDiscord(e.target.value)}
+            placeholder="Discord"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="text"
+            value={proxy}
+            onChange={(e) => setProxy(e.target.value)}
+            placeholder="Proxy URL"
+            className="w-full p-2 border rounded"
+          />
         </div>
 
-        <Button onClick={() => document.getElementById('wallet-upload')?.click()} className="w-full">
-          Batch Import Wallets
-        </Button>
-        <input
-          id="wallet-upload"
-          type="file"
-          accept="application/json"
-          onChange={handleWalletUpload}
-          className="hidden"
-        />
-
-        <div className="text-sm text-gray-700 space-y-1">
-          <p><strong>Stats</strong></p>
-          <p>Num Wallets: {wallets.length}</p>
-          <p>Balances: {(wallets.length * 0.02).toFixed(4)} ETH</p>
+        <div className="mb-6">
+          <input
+            type="text"
+            value={logPath}
+            onChange={(e) => setLogPath(e.target.value)}
+            placeholder="Log Export Path"
+            className="w-full p-2 border rounded"
+          />
         </div>
 
-        <div className="space-y-3">
-          <Input placeholder="Telegram Account" value={telegram} onChange={(e) => setTelegram(e.target.value)} />
-          <Input placeholder="Twitter Account" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
-          <Input placeholder="Discord Account" value={discord} onChange={(e) => setDiscord(e.target.value)} />
-          <Textarea placeholder="Faucet Proxy (one per line)" value={proxy} onChange={(e) => setProxy(e.target.value)} />
-          <Input placeholder="Log Export Directory" value={logDir} onChange={(e) => setLogDir(e.target.value)} />
-        </div>
-
-        <Button className="w-full" onClick={handleStartAutomation} disabled={wallets.length === 0 || loading}>
-          {loading ? 'Starting...' : 'Start'}
-        </Button>
+        <button
+          onClick={handleStart}
+          className="w-full bg-pink-600 hover:bg-pink-700 text-white p-3 rounded font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+          disabled={loading}
+        >
+          {loading ? "⏳ Starting..." : "🚀 Start Automation"}
+        </button>
       </div>
-      <ToastContainer position="top-center" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover theme="light" />
     </div>
   );
-}
+};
+
+export default WalletAutomationDashboard;
