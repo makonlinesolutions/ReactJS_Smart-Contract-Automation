@@ -52,39 +52,8 @@ export default tseslint.config({
   },
 })
 ```
-Usage
-Configure .env file with your blockchain settings.
 
-Prepare a wallets.json file (sample format below).
-
-Send a POST request to /api/start from your frontend or Postman.
-
-Check logs and outputs in /logs folder.
-
-API
-POST /api/start
-Starts the automation process with uploaded wallets and parameters.
-
-Sample .env
-env
-Copy
-Edit
-RPC_URL=https://monad-testnet.rpc
-TOKEN_IN_ADDRESS=0x...
-TOKEN_OUT_ADDRESS=0x...
-SWAP_ROUTER_ADDRESS=0x...
-TELEGRAM_HANDLE=your_handle
-TELEGRAM_GROUP_LINK=https://t.me/yourgroup
-...
-Sample wallets.json
-json
-Copy
-Edit
-[
-  { "address": "0x123...", "privateKey": "0xabc..." },
-  { "address": "0x456...", "privateKey": "0xdef..." }
-]
-Support
-For questions, contact:
-MAK Online Solutions Pvt Ltd
+## Support
+For questions, contact:<br>
+<strong>MAK Online Solutions Pvt Ltd></strong><br>
 📧 onkar@makonlinesolutions.com
